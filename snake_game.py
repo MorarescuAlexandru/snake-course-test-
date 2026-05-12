@@ -1,7 +1,6 @@
 import pygame
 import random
 import sys
-import os
 import math
 
 WIDTH, HEIGHT = 640, 480
@@ -20,18 +19,14 @@ FOOD_GLOW = (255, 110, 80)
 WHITE = (235, 235, 235)
 GRAY = (130, 130, 155)
 GOLD = (255, 215, 0)
-TITLE_COLOR = (50, 225, 80)
 
 HIGHSCORE_FILE = "highscore.txt"
 
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Snake")
-clock = pygame.time.Clock()
-
-font_big = pygame.font.Font(None, 72)
-font_mid = pygame.font.Font(None, 36)
-font_sml = pygame.font.Font(None, 24)
+screen = None
+clock = None
+font_big = None
+font_mid = None
+font_sml = None
 
 
 def load_highscore():
@@ -155,18 +150,17 @@ def draw_text(text, font, color, x, y, center=False):
 
 
 class Game:
-    MENU = 0
-    PLAYING = 1
-    PAUSED = 2
-    GAMEOVER = 3
+    PLAYING = 0
+    PAUSED = 1
+    GAMEOVER = 2
 
     def __init__(self):
         self.highscore = load_highscore()
-        self.state = self.MENU
-        self.snake = None
-        self.food = None
+        self.snake = Snake()
+        self.food = Food(self.snake.occupies())
         self.score = 0
         self.fps = BASE_FPS
+        self.state = self.PLAYING
 
     def start_game(self):
         self.snake = Snake()
@@ -181,18 +175,14 @@ class Game:
                 return False
 
             if event.type == pygame.KEYDOWN:
-                if self.state == self.MENU:
-                    if event.key == pygame.K_SPACE:
-                        self.start_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        return False
+                if event.key == pygame.K_SPACE:
+                    self.start_game()
+
+                elif event.key == pygame.K_p and self.state != self.GAMEOVER:
+                    self.state = self.PAUSED if self.state == self.PLAYING else self.PLAYING
 
                 elif self.state == self.PLAYING:
-                    if event.key == pygame.K_ESCAPE:
-                        return False
-                    elif event.key == pygame.K_p:
-                        self.state = self.PAUSED
-                    elif event.key == pygame.K_UP:
+                    if event.key == pygame.K_UP:
                         self.snake.set_direction((0, -1))
                     elif event.key == pygame.K_DOWN:
                         self.snake.set_direction((0, 1))
@@ -200,18 +190,6 @@ class Game:
                         self.snake.set_direction((-1, 0))
                     elif event.key == pygame.K_RIGHT:
                         self.snake.set_direction((1, 0))
-
-                elif self.state == self.PAUSED:
-                    if event.key == pygame.K_p:
-                        self.state = self.PLAYING
-                    elif event.key == pygame.K_ESCAPE:
-                        return False
-
-                elif self.state == self.GAMEOVER:
-                    if event.key == pygame.K_SPACE:
-                        self.start_game()
-                    elif event.key == pygame.K_ESCAPE:
-                        return False
 
         return True
 
@@ -237,9 +215,7 @@ class Game:
     def draw(self):
         screen.fill(BG)
 
-        if self.state == self.MENU:
-            self._draw_menu()
-        elif self.state in (self.PLAYING, self.PAUSED):
+        if self.state in (self.PLAYING, self.PAUSED):
             self._draw_game()
             if self.state == self.PAUSED:
                 self._draw_pause()
@@ -248,16 +224,6 @@ class Game:
             self._draw_gameover()
 
         pygame.display.flip()
-
-    def _draw_menu(self):
-        draw_text("SNAKE", font_big, TITLE_COLOR, WIDTH // 2, HEIGHT // 3,
-                  center=True)
-        draw_text("Press SPACE to play", font_sml, GRAY,
-                  WIDTH // 2, HEIGHT // 2 + 20, center=True)
-        draw_text(f"High Score: {self.highscore}", font_mid, WHITE,
-                  WIDTH // 2, HEIGHT // 2 + 70, center=True)
-        draw_text("Arrow keys to move   |   P to pause   |   ESC to quit",
-                  font_sml, GRAY, WIDTH // 2, HEIGHT - 50, center=True)
 
     def _draw_game(self):
         draw_grid()
@@ -288,10 +254,11 @@ class Game:
                       WIDTH // 2, HEIGHT // 2 + 38, center=True)
         draw_text("Press SPACE to play again", font_sml, GRAY,
                   WIDTH // 2, HEIGHT // 2 + 75, center=True)
-        draw_text("Press ESC to quit", font_sml, GRAY,
+        draw_text("P to pause", font_sml, GRAY,
                   WIDTH // 2, HEIGHT // 2 + 105, center=True)
 
     def run(self):
+        pygame.event.clear()
         running = True
         while running:
             running = self.handle_events()
@@ -302,9 +269,21 @@ class Game:
         sys.exit()
 
 
+def main():
+    global screen, clock, font_big, font_mid, font_sml
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Snake")
+    clock = pygame.time.Clock()
+    font_big = pygame.font.Font(None, 72)
+    font_mid = pygame.font.Font(None, 36)
+    font_sml = pygame.font.Font(None, 24)
+    Game().run()
+
+
 if __name__ == "__main__":
     try:
-        Game().run()
+        main()
     except Exception as e:
         import traceback
         traceback.print_exc()
